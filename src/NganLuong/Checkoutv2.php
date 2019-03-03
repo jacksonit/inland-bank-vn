@@ -1,24 +1,26 @@
 <?php
 
 /**
-*		MODULE TẠO ĐƯỜNG LINK THANH TOÁN QUA NGÂNLƯỢNG VÀ KIỂM TRA ĐƯỜNG LINK KẾT QUẢ THANH TOÁN TRẢ VỀ TỪ NGÂNLƯỢNG.VN.
-*		Mã checksum là: một tham số được tạo bởi thuật toán MD5 các tham số giao tiếp giữa NgânLượng.vn & website bán hàng
-* 		và một chuỗi ký tự gọi là mật khẩu giao tiếp.
-*		Người dùng không thể tự động sửa được giá trị tham số giao tiếp giữa website của bạn và NgânLượng.vn nếu như không biết chính xác tham số bạn đã lưu và mật khẩu giao tiếp là gì.
+*   MODULE TẠO ĐƯỜNG LINK THANH TOÁN QUA NGÂNLƯỢNG VÀ KIỂM TRA ĐƯỜNG LINK KẾT QUẢ THANH TOÁN TRẢ VỀ TỪ NGÂNLƯỢNG.VN.
+*   Mã checksum là: một tham số được tạo bởi thuật toán MD5 các tham số giao tiếp giữa NgânLượng.vn & website bán hàng
+*     và một chuỗi ký tự gọi là mật khẩu giao tiếp.
+*   Người dùng không thể tự động sửa được giá trị tham số giao tiếp giữa website của bạn và NgânLượng.vn nếu như không biết chính xác tham số bạn đã lưu và mật khẩu giao tiếp là gì.
 **/
 
 namespace NganLuong;
 class Checkoutv2
 {
   // Địa chỉ thanh toán hoá đơn của NgânLượng.vn
-  public $nganluong_url = 'https://www.nganluong.vn/checkout.php';
+  public static $nganluong_url         = 'https://www.nganluong.vn/checkout.php';
+  public static $nganluong_url_sandbox = 'https://sandbox.nganluong.vn:8088/nl35/checkout.php';
   // Mã website của bạn đăng ký trong chức năng tích hợp thanh toán của NgânLượng.vn.
-  public $merchant_site_code = '275'; //100001 chỉ là ví dụ, bạn hãy thay bằng mã của bạn
+  public static $merchant_site_code = '275'; //100001 chỉ là ví dụ, bạn hãy thay bằng mã của bạn
   // Mật khẩu giao tiếp giữa website của bạn và NgânLượng.vn.
-  public $secure_pass= '123456'; //d685739bf1 chỉ là ví dụ, bạn hãy thay bằng mật khẩu của bạn
+  public static $secure_pass= '123456'; //d685739bf1 chỉ là ví dụ, bạn hãy thay bằng mật khẩu của bạn
   // Nếu bạn thay đổi mật khẩu giao tiếp trong quản trị website của chức năng tích hợp thanh toán trên NgânLượng.vn, vui lòng update lại mật khẩu này trên website của bạn
-  public $affiliate_code = ''; //Mã đối tác tham gia chương trình liên kết của NgânLượng.vn
-
+  public static $affiliate_code = ''; //Mã đối tác tham gia chương trình liên kết của NgânLượng.vn
+  // True để bật và false để tắt sandbox
+  public static $sandbox_flag = false;
   /**
    * HÀM TẠO ĐƯỜNG LINK THANH TOÁN QUA NGÂNLƯỢNG.VN VỚI THAM SỐ MỞ RỘNG
    *
@@ -40,9 +42,9 @@ class Checkoutv2
    */
   public function buildCheckoutUrlExpand($return_url, $receiver, $transaction_info, $order_code, $price, $currency = 'vnd', $quantity = 1, $tax = 0, $discount = 0, $fee_cal = 0, $fee_shipping = 0, $order_description = '', $buyer_info = '', $affiliate_code = '')
   {
-    if ($affiliate_code == "") $affiliate_code = $this->affiliate_code;
+    if ($affiliate_code == "") $affiliate_code = static::$affiliate_code;
     $arr_param = array(
-      'merchant_site_code'=>  strval($this->merchant_site_code),
+      'merchant_site_code'=>  strval(static::$merchant_site_code),
       'return_url'    =>  strval(strtolower($return_url)),
       'receiver'      =>  strval($receiver),
       'transaction_info'  =>  strval($transaction_info),
@@ -60,12 +62,12 @@ class Checkoutv2
     );
 
     $secure_code ='';
-    $secure_code = implode(' ', $arr_param) . ' ' . $this->secure_pass;
+    $secure_code = implode(' ', $arr_param) . ' ' . static::$secure_pass;
     //var_dump($secure_code). "<br/>";
     $arr_param['secure_code'] = md5($secure_code);
     //echo $arr_param['secure_code'];
     /* */
-    $redirect_url = $this->nganluong_url;
+    $redirect_url =  (static::$sandbox_flag) ? static::$nganluong_url_sandbox : static::$nganluong_url;
     if (strpos($redirect_url, '?') === false) {
       $redirect_url .= '?';
     } else if (substr($redirect_url, strlen($redirect_url)-1, 1) != '?' && strpos($redirect_url, '&') === false) {
@@ -102,7 +104,7 @@ class Checkoutv2
 
     // Bước 1. Mảng các tham số chuyển tới nganluong.vn
     $arr_param = array(
-      'merchant_site_code'=>  strval($this->merchant_site_code),
+      'merchant_site_code'=>  strval(static::$merchant_site_code),
       'return_url'    =>  strtolower(urlencode($return_url)),
       'receiver'      =>  strval($receiver),
       'transaction_info'  =>  strval($transaction_info),
@@ -110,11 +112,11 @@ class Checkoutv2
       'price'       =>  strval($price)
     );
     $secure_code ='';
-    $secure_code = implode(' ', $arr_param) . ' ' . $this->secure_pass;
+    $secure_code = implode(' ', $arr_param) . ' ' . static::$secure_pass;
     $arr_param['secure_code'] = md5($secure_code);
 
     /* Bước 2. Kiểm tra  biến $redirect_url xem có '?' không, nếu không có thì bổ sung vào*/
-    $redirect_url = $this->nganluong_url;
+    $redirect_url =  (static::$sandbox_flag) ? static::$nganluong_url_sandbox : static::$nganluong_url;
     if (strpos($redirect_url, '?') === false)
     {
       $redirect_url .= '?';
@@ -162,8 +164,8 @@ class Checkoutv2
     $str .= ' ' . strval($payment_id);
     $str .= ' ' . strval($payment_type);
     $str .= ' ' . strval($error_text);
-    $str .= ' ' . strval($this->merchant_site_code);
-    $str .= ' ' . strval($this->secure_pass);
+    $str .= ' ' . strval(static::$merchant_site_code);
+    $str .= ' ' . strval(static::$secure_pass);
 
         // Mã hóa các tham số
     $verify_secure_code = '';
@@ -176,8 +178,8 @@ class Checkoutv2
   function GetTransactionDetail($token){
         ###################### BEGIN #####################
             $params = array(
-              'merchant_id'       => $this->merchant_site_code ,
-              'merchant_password' => MD5($this->secure_pass),
+              'merchant_id'       => static::$merchant_site_code ,
+              'merchant_password' => MD5(static::$secure_pass),
               'version'           => Config::$_VERSION,
               'function'          => 'GetTransactionDetail',
               'token'             => $token
